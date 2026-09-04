@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Report Generator", layout="wide")
+st.set_page_config(page_title="Zammad Ticket Report Generator", layout="wide")
+
 
 st.title("Report Generator")
 st.write("Upload **all your Zammad Excel exports** at once (`.xlsx`) to instantly generate the comprehensive combined report (test groups automatically excluded).")
@@ -32,12 +33,12 @@ if uploaded_files:
         if '#' in df.columns:
             df = df.drop_duplicates(subset=['#'])
             
-        # --- PERMANENT CLEANING RULES ---
-        # 1. Exclude 'test group' and 'Partner Search' group
+        # Permanent exclusions: test group, Partner Search, and Users groups
+        excluded_groups = ['test group', 'Partner Search', 'Users']
         if 'Group' in df.columns:
-            df = df[~df['Group'].isin(['test group', 'Partner Search'])]
+            df = df[~df['Group'].isin(excluded_groups)]
             
-        # 2. Categorize and exclude 'Other / General Support' requests
+        # Categorize request types (keeping general support)
         def categorize_title(title):
             t = str(title).lower()
             if 'partnering offer draft' in t or 'new partner offer' in t:
@@ -49,10 +50,9 @@ if uploaded_files:
                 
         if 'Title' in df.columns:
             df['Request_Type_Derived'] = df['Title'].apply(categorize_title)
-            df = df[df['Request_Type_Derived'] != 'Other / General Support']
             
         total_tickets = len(df)
-        st.success(f"Successfully loaded {total_tickets} active partner tickets (Test Group, Partner Search group, and General Support excluded).")
+        st.success(f"Successfully loaded {total_tickets} active tickets (Test Group, Partner Search, and Users groups excluded; General Support included).")
         
         col1, col2 = st.columns(2)
         
