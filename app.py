@@ -3,7 +3,6 @@ import pandas as pd
 
 st.set_page_config(page_title="Zammad Ticket Report Generator", layout="wide")
 
-
 st.title("Report Generator")
 st.write("Upload **all your Zammad Excel exports** at once (`.xlsx`) to instantly generate the comprehensive combined report (test groups automatically excluded).")
 
@@ -30,15 +29,20 @@ if uploaded_files:
             
     if created_dfs:
         df = pd.concat(created_dfs, ignore_index=True)
+        
+        # 1. Drop export metadata footer rows where State or Ticket ID is missing
+        if 'State' in df.columns:
+            df = df.dropna(subset=['State'])
         if '#' in df.columns:
+            df = df.dropna(subset=['#'])
             df = df.drop_duplicates(subset=['#'])
             
-        # Permanent exclusions: test group, Partner Search, and Users groups
+        # 2. Permanent exclusions: test group, Partner Search, and Users groups
         excluded_groups = ['test group', 'Partner Search', 'Users']
         if 'Group' in df.columns:
             df = df[~df['Group'].isin(excluded_groups)]
             
-        # Categorize request types (keeping general support)
+        # 3. Categorize request types (keeping general support)
         def categorize_title(title):
             t = str(title).lower()
             if 'partnering offer draft' in t or 'new partner offer' in t:
@@ -52,13 +56,13 @@ if uploaded_files:
             df['Request_Type_Derived'] = df['Title'].apply(categorize_title)
             
         total_tickets = len(df)
-        st.success(f"Successfully loaded {total_tickets} active tickets (Test Group, Partner Search, and Users groups excluded; General Support included).")
+        st.success(f"Successfully loaded {total_tickets} active tickets (Test Group, Partner Search, Users, and export metadata excluded).")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.subheader("Ticket State")
-            state_counts = df['State'].value_counts(dropna=False)
+            state_counts = df['State'].value_counts()
             state_df = pd.DataFrame({
                 'Count': state_counts,
                 '% of Total': (state_counts / total_tickets * 100).round(1).astype(str) + '%'
